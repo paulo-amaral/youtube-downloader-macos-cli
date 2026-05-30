@@ -30,7 +30,7 @@ jobs:
         run: go test ./...
 
       - name: Build
-        run: go build -o youtube-downloader .
+        run: go build -trimpath -o bin/youtube-downloader ./cmd/youtube-downloader
 
       - name: Check Bash wrapper
-        run: bash -n download_videos.sh
+        run: bash -n scripts/download_videos.sh

@@ -13,21 +13,19 @@ Requirements:
 Run checks:
 
 ```bash
-go test ./...
-go build -o youtube-downloader .
-bash -n download_videos.sh
+make check
 ```
 
 Run the CLI:
 
 ```bash
-./youtube-downloader
+make run
 ```
 
 Preview a download command without downloading:
 
 ```bash
-./youtube-downloader download --dry-run --quality 720 "https://www.youtube.com/watch?v=VIDEO_ID"
+go run ./cmd/youtube-downloader download --dry-run --quality 720 "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 ## Pull Requests

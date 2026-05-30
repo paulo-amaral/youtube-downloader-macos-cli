@@ -7,8 +7,8 @@ usage() {
 Download YouTube videos with yt-dlp.
 
 Usage:
-  ./download_videos.sh [options] URL [URL...]
-  ./download_videos.sh [options] -f urls.txt
+  ./scripts/download_videos.sh [options] URL [URL...]
+  ./scripts/download_videos.sh [options] -f urls.txt
 
 Options:
   -o, --output DIR      Directory for downloads. Default: ./downloads

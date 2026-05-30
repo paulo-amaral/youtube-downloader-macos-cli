@@ -1,0 +1,40 @@
+version: 2
+
+project_name: youtube-downloader
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: youtube-downloader
+    main: ./cmd/youtube-downloader
+    binary: youtube-downloader
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - arm64
+      - amd64
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

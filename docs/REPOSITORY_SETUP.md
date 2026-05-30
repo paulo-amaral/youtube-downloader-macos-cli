@@ -31,7 +31,7 @@ Run this after authenticating GitHub CLI:
 ```bash
 gh auth login -h github.com
 git init -b main
-git add README.md LICENSE SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md CHANGELOG.md VERSION go.mod main.go download_videos.sh .gitignore .github REPOSITORY_SETUP.md
+git add README.md LICENSE SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md CHANGELOG.md VERSION go.mod cmd scripts docs Makefile .gitignore .editorconfig .goreleaser.yml .github
 git commit -m "release v0.1.0"
 gh repo create youtube-downloader-macos-cli \
   --public \
