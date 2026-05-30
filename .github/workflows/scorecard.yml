@@ -1,6 +1,7 @@
 name: Scorecard
 
 on:
+  pull_request:
   branch_protection_rule:
   schedule:
     - cron: "37 5 * * 2"
