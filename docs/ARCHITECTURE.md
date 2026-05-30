@@ -6,8 +6,8 @@ This repository is intentionally small and dependency-light.
 
 ```text
 cmd/youtube-downloader/  Go CLI entrypoint
-scripts/                 Optional shell utilities
-docs/                    Project and publishing notes
+scripts/                 Local maintenance scripts
+docs/                    Architecture and security notes
 .github/                 CI, issue templates, and PR template
 ```
 
