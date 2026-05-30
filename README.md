@@ -11,7 +11,7 @@ Designed for people who want the power of `yt-dlp` with a cleaner terminal exper
 This repo includes:
 
 - `cmd/youtube-downloader`: a Go CLI with interactive UX, subcommands, presets, clipboard support on macOS, and dry-run previews
-- `scripts/download_videos.sh`: a Bash wrapper for quick shell usage
+- `scripts/security_check.sh`: a local maintenance script for security checks
 
 ## Keywords
 
@@ -132,50 +132,12 @@ Print the current version:
     --dry-run             preview yt-dlp command
 ```
 
-## Bash Script
-
-Download one video with the Bash wrapper:
-
-```bash
-./scripts/download_videos.sh "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
-```
-
-Download at a maximum quality:
-
-```bash
-./scripts/download_videos.sh --quality 1080 "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
-```
-
-Choose an output directory:
-
-```bash
-./scripts/download_videos.sh --output videos "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
-```
-
-Download a playlist:
-
-```bash
-./scripts/download_videos.sh --playlist "https://www.youtube.com/playlist?list=PLAYLIST_ID"
-```
-
-Download URLs from a file:
-
-```bash
-./scripts/download_videos.sh --file urls.txt
-```
-
-List available formats without downloading:
-
-```bash
-./scripts/download_videos.sh --list "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
-```
-
 ## URL Quoting
 
 In `zsh`, YouTube URLs must be quoted because characters like `?` and `&` are interpreted by the shell:
 
 ```bash
-./scripts/download_videos.sh "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
+./bin/youtube-downloader download "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
 ```
 
 Without quotes, you may see:
@@ -184,21 +146,13 @@ Without quotes, you may see:
 zsh: no matches found: https://www.youtube.com/watch?v=5ZsPtbD4P9s
 ```
 
-## Options
-
-```text
--o, --output DIR      Directory for downloads. Default: ./downloads
--q, --quality VALUE   Video quality. Default: best
-                      Examples: best, 1080, 720, audio
--f, --file FILE       Read URLs from a text file, one URL per line.
--p, --playlist        Download full playlists. Default downloads only one video.
--l, --list            List available formats instead of downloading.
--u, --update          Update yt-dlp before downloading.
-    --open            Open the output folder in Finder after downloading.
--h, --help            Show help.
-```
-
 ## URL File Format
+
+Use `--file` to download a list of URLs:
+
+```bash
+./bin/youtube-downloader download --file urls.txt
+```
 
 Example `urls.txt`:
 
@@ -207,8 +161,6 @@ https://www.youtube.com/watch?v=VIDEO_ID_1
 https://www.youtube.com/watch?v=VIDEO_ID_2
 # Lines starting with # are ignored
 ```
-
-The Bash script saves to `./downloads` by default.
 
 ## Project Status
 
@@ -220,8 +172,8 @@ This project is a local CLI wrapper around `yt-dlp`. Use it responsibly and foll
 
 ```text
 cmd/youtube-downloader/  Go CLI entrypoint
-scripts/                 Bash wrapper and utilities
-docs/                    Architecture and repository setup notes
+scripts/                 Local maintenance scripts
+docs/                    Architecture and security notes
 .github/                 CI, Dependabot, issue templates, PR template
 ```
 

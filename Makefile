@@ -28,7 +28,6 @@ security:
 	bash scripts/security_check.sh
 
 check: fmt test build security
-	bash -n scripts/download_videos.sh
 
 run:
 	go run $(CMD)
