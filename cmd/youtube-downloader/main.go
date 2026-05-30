@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 const appName = "youtube-downloader"
 const version = "0.1.0"
+const maxURLFileBytes int64 = 1 << 20
 
 type config struct {
 	outputDir   string
@@ -122,11 +124,17 @@ func normalizeConfig(cfg config) (config, error) {
 	if cfg.outputDir == "" {
 		return cfg, errors.New("output directory cannot be empty")
 	}
+	if err := validateOutputDir(cfg.outputDir); err != nil {
+		return cfg, err
+	}
 	if cfg.quality == "" {
 		return cfg, errors.New("quality cannot be empty")
 	}
 	if cfg.audioFormat == "" {
 		return cfg, errors.New("audio format cannot be empty")
+	}
+	if err := validateAudioFormat(cfg.audioFormat); err != nil {
+		return cfg, err
 	}
 	if cfg.urlFile != "" {
 		urls, err := readURLFile(cfg.urlFile)
@@ -135,7 +143,11 @@ func normalizeConfig(cfg config) (config, error) {
 		}
 		cfg.urls = append(cfg.urls, urls...)
 	}
-	cfg.urls = cleanURLs(cfg.urls)
+	urls, err := cleanURLs(cfg.urls)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.urls = urls
 	return cfg, nil
 }
 
@@ -227,7 +239,11 @@ func promptURLs(reader *bufio.Reader, cfg *config) error {
 		}
 		cfg.urls = append(cfg.urls, line)
 	}
-	cfg.urls = cleanURLs(cfg.urls)
+	urls, err := cleanURLs(cfg.urls)
+	if err != nil {
+		return err
+	}
+	cfg.urls = urls
 	return nil
 }
 
@@ -354,7 +370,19 @@ func check() error {
 }
 
 func readURLFile(path string) ([]string, error) {
-	file, err := os.Open(expandHome(path))
+	path = expandHome(path)
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("inspect URL file: %w", err)
+	}
+	if info.IsDir() {
+		return nil, errors.New("URL file path points to a directory")
+	}
+	if info.Size() > maxURLFileBytes {
+		return nil, fmt.Errorf("URL file is too large: max %d bytes", maxURLFileBytes)
+	}
+
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open URL file: %w", err)
 	}
@@ -452,7 +480,7 @@ func clipboardText() string {
 	return strings.TrimSpace(out)
 }
 
-func cleanURLs(values []string) []string {
+func cleanURLs(values []string) ([]string, error) {
 	seen := map[string]bool{}
 	var urls []string
 	for _, value := range values {
@@ -460,14 +488,68 @@ func cleanURLs(values []string) []string {
 		if value == "" || seen[value] {
 			continue
 		}
+		if err := validateYouTubeURL(value); err != nil {
+			return nil, err
+		}
 		seen[value] = true
 		urls = append(urls, value)
 	}
-	return urls
+	return urls, nil
 }
 
 func looksLikeURL(value string) bool {
 	return strings.HasPrefix(value, "https://") || strings.HasPrefix(value, "http://")
+}
+
+func validateYouTubeURL(value string) error {
+	if strings.ContainsAny(value, "\x00\r\n\t") {
+		return fmt.Errorf("URL contains unsafe control characters: %q", value)
+	}
+
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil {
+		return fmt.Errorf("invalid URL %q: %w", value, err)
+	}
+	if parsed.Scheme != "https" {
+		return fmt.Errorf("only https URLs are allowed: %q", value)
+	}
+	if !isAllowedYouTubeHost(parsed.Hostname()) {
+		return fmt.Errorf("only YouTube URLs are allowed by default: %q", value)
+	}
+	return nil
+}
+
+func isAllowedYouTubeHost(host string) bool {
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	switch host {
+	case "youtu.be", "youtube.com", "youtube-nocookie.com":
+		return true
+	}
+	return strings.HasSuffix(host, ".youtube.com") || strings.HasSuffix(host, ".youtube-nocookie.com")
+}
+
+func validateAudioFormat(value string) error {
+	switch strings.ToLower(value) {
+	case "aac", "alac", "flac", "m4a", "mp3", "opus", "vorbis", "wav":
+		return nil
+	default:
+		return fmt.Errorf("unsupported audio format %q", value)
+	}
+}
+
+func validateOutputDir(path string) error {
+	clean := filepath.Clean(path)
+	if clean == "." {
+		return nil
+	}
+	if clean == string(filepath.Separator) {
+		return errors.New("refusing to use filesystem root as output directory")
+	}
+	home, err := os.UserHomeDir()
+	if err == nil && clean == filepath.Clean(home) {
+		return errors.New("refusing to use home directory itself as output directory")
+	}
+	return nil
 }
 
 func defaultDownloadDir() string {
