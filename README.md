@@ -28,6 +28,7 @@ This repo includes:
 - Dependency checks for `yt-dlp` and `ffmpeg`
 - Finder integration with `--open`
 - CI-ready Go project with security and contribution docs
+- Hardened inputs: HTTPS-only, YouTube-only by default, URL control-character rejection, audio format allowlist
 
 ## Requirements
 
@@ -229,6 +230,15 @@ For development details, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 ## Security
 
 Do not commit cookies, browser session files, private URLs, or tokens. See [SECURITY.md](./SECURITY.md).
+
+Security posture:
+
+- No shell execution for `yt-dlp` commands
+- HTTPS-only YouTube URL allowlist
+- Secret scanning, CodeQL, OSSF Scorecard, Dependabot
+- Local security checks with `make security`
+
+For details, see [docs/SECURITY_HARDENING.md](./docs/SECURITY_HARDENING.md).
 
 ## License
 

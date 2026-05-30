@@ -24,6 +24,7 @@ Options:
 Notes:
   - Requires yt-dlp: https://github.com/yt-dlp/yt-dlp
   - For merged video/audio downloads, yt-dlp may require ffmpeg.
+  - Security: accepts only https YouTube URLs by default.
 USAGE
 }
 
@@ -34,6 +35,33 @@ die() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || die "$1 is not installed or not on PATH."
+}
+
+file_size_bytes() {
+  if stat -f%z "$1" >/dev/null 2>&1; then
+    stat -f%z "$1"
+  else
+    stat -c%s "$1"
+  fi
+}
+
+validate_url() {
+  local url="$1"
+  [[ "$url" != *$'\n'* && "$url" != *$'\r'* && "$url" != *$'\t'* ]] || die "URL contains unsafe control characters: $url"
+  [[ "$url" == https://* ]] || die "Only https URLs are allowed: $url"
+
+  local rest="${url#https://}"
+  local host="${rest%%/*}"
+  host="${host%%:*}"
+  host="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
+
+  case "$host" in
+    youtube.com|*.youtube.com|youtu.be|youtube-nocookie.com|*.youtube-nocookie.com)
+      ;;
+    *)
+      die "Only YouTube URLs are allowed by default: $url"
+      ;;
+  esac
 }
 
 output_dir="downloads"
@@ -101,13 +129,19 @@ require_command yt-dlp
 
 if [[ -n "$url_file" ]]; then
   [[ -f "$url_file" ]] || die "URL file not found: $url_file"
+  [[ "$(file_size_bytes "$url_file")" -le 1048576 ]] || die "URL file is too large: $url_file"
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    validate_url "$line"
     urls+=("$line")
   done < "$url_file"
 fi
 
 ((${#urls[@]} > 0)) || die "No YouTube URLs provided. Run with --help for examples."
+
+for url in "${urls[@]}"; do
+  validate_url "$url"
+done
 
 if $update_ytdlp; then
   yt-dlp -U
