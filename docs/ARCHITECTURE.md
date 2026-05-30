@@ -6,8 +6,8 @@ This repository is intentionally small and dependency-light.
 
 ```text
 cmd/youtube-downloader/  Go CLI entrypoint
-scripts/                 Optional shell utilities
-docs/                    Project and publishing notes
+scripts/                 Local maintenance scripts
+docs/                    Architecture and security notes
 .github/                 CI, issue templates, and PR template
 ```
 
@@ -16,6 +16,7 @@ docs/                    Project and publishing notes
 - Keep the CLI local-first: no telemetry, no service dependency, no background daemon.
 - Delegate download behavior to `yt-dlp` instead of reimplementing video extraction.
 - Keep the interactive flow safe: preview commands with `--dry-run`, avoid writing files during previews, and ignore local downloads in Git.
+- Validate inputs before invoking `yt-dlp`: HTTPS-only, YouTube host allowlist, no URL control characters, and constrained audio formats.
 - Prefer the standard library until a dependency removes clear complexity.
 
 ## Release Flow

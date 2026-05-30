@@ -5,8 +5,8 @@
 ## Validation
 
 - [ ] `go test ./...`
-- [ ] `go build -o youtube-downloader .`
-- [ ] `bash -n download_videos.sh`
+- [ ] `go build -trimpath -o bin/youtube-downloader ./cmd/youtube-downloader`
+- [ ] `make security`
 
 ## Notes
 

@@ -16,6 +16,12 @@ Run checks:
 make check
 ```
 
+Run security checks only:
+
+```bash
+make security
+```
+
 Run the CLI:
 
 ```bash
