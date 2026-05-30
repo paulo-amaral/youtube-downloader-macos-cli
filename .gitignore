@@ -1,0 +1,32 @@
+downloads/
+youtube-downloader
+
+# Downloaded media
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.mp3
+*.m4a
+*.opus
+*.wav
+*.flac
+*.part
+*.ytdl
+
+# Local configuration and secrets
+.env
+.env.*
+*.cookies
+cookies.txt
+*.netrc
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Build/test output
+coverage.out
+dist/
+bin/
