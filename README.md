@@ -75,6 +75,14 @@ cp .env.example .env
 
 The CLI loads `.env` automatically when it runs. Keep real API keys in `.env` only.
 
+If `yt-dlp` warns that no JavaScript runtime is available for YouTube extraction,
+install `node` or `deno`. The CLI auto-detects either one and passes it to `yt-dlp`.
+You can also force one in `.env`:
+
+```bash
+YTDLP_JS_RUNTIME="node:/path/to/node"
+```
+
 Update `yt-dlp`:
 
 ```bash

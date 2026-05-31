@@ -1179,7 +1179,7 @@ func doJSON(client *http.Client, req *http.Request, target any) error {
 
 func downloadVideoForDubbing(sourceURL, workDir string) (string, error) {
 	printStep("downloading source video")
-	args := []string{
+	args := append(ytdlpJSRuntimeArgs(),
 		"--no-playlist",
 		"--restrict-filenames",
 		"--windows-filenames",
@@ -1187,7 +1187,7 @@ func downloadVideoForDubbing(sourceURL, workDir string) (string, error) {
 		"-f", "bestvideo+bestaudio/best",
 		"-o", filepath.Join(workDir, "source.%(ext)s"),
 		sourceURL,
-	}
+	)
 	if err := streamCommand("yt-dlp", args...); err != nil {
 		return "", err
 	}
@@ -1562,10 +1562,10 @@ func buildYTDLPArgs(cfg config, listFormats bool) []string {
 		playlistFlag = "--yes-playlist"
 	}
 	if listFormats {
-		return append([]string{"--list-formats", playlistFlag}, cfg.urls...)
+		return append(append(ytdlpJSRuntimeArgs(), "--list-formats", playlistFlag), cfg.urls...)
 	}
 
-	args := []string{
+	args := append(ytdlpJSRuntimeArgs(),
 		"--ignore-errors",
 		"--continue",
 		"--no-overwrites",
@@ -1574,7 +1574,7 @@ func buildYTDLPArgs(cfg config, listFormats bool) []string {
 		"--embed-metadata",
 		"-o", filepath.Join(cfg.outputDir, "%(title).200s [%(id)s].%(ext)s"),
 		playlistFlag,
-	}
+	)
 
 	if cfg.quality == "audio" {
 		args = append(args, "-f", "bestaudio/best", "-x", "--audio-format", cfg.audioFormat)
@@ -1588,6 +1588,30 @@ func buildYTDLPArgs(cfg config, listFormats bool) []string {
 		}
 	}
 	return append(args, cfg.urls...)
+}
+
+func ytdlpJSRuntimeArgs() []string {
+	runtime := strings.TrimSpace(os.Getenv("YTDLP_JS_RUNTIME"))
+	if runtime == "none" || runtime == "off" {
+		return nil
+	}
+	if runtime == "" {
+		runtime = detectYTDLPJSRuntime()
+	}
+	if runtime == "" {
+		return nil
+	}
+	return []string{"--js-runtimes", runtime}
+}
+
+func detectYTDLPJSRuntime() string {
+	for _, candidate := range []string{"deno", "node"} {
+		path, err := exec.LookPath(candidate)
+		if err == nil {
+			return candidate + ":" + path
+		}
+	}
+	return ""
 }
 
 func formatForQuality(quality string) string {
@@ -1610,6 +1634,11 @@ func check() error {
 	if ytDLPErr == nil {
 		version, _ := commandOutput("yt-dlp", "--version")
 		printField("version", strings.TrimSpace(version))
+	}
+	if runtime := envOrDefault("YTDLP_JS_RUNTIME", detectYTDLPJSRuntime()); runtime != "" {
+		printField("js runtime", runtime)
+	} else {
+		printStatus("missing", "js runtime", "optional; YouTube may miss formats")
 	}
 
 	ffmpegPath, ffmpegErr := exec.LookPath("ffmpeg")

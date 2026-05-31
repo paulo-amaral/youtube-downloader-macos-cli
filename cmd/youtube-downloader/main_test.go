@@ -71,7 +71,7 @@ func TestValidateAudioFormat(t *testing.T) {
 }
 
 func TestBuildYTDLPArgsWithPortugueseSubtitles(t *testing.T) {
-	t.Parallel()
+	t.Setenv("YTDLP_JS_RUNTIME", "off")
 
 	args := buildYTDLPArgs(config{
 		outputDir:     "downloads",
@@ -87,6 +87,20 @@ func TestBuildYTDLPArgsWithPortugueseSubtitles(t *testing.T) {
 		if !hasArg(args, want) {
 			t.Fatalf("expected args to include %q: %#v", want, args)
 		}
+	}
+}
+
+func TestBuildYTDLPArgsWithJSRuntime(t *testing.T) {
+	t.Setenv("YTDLP_JS_RUNTIME", "node:/usr/local/bin/node")
+
+	args := buildYTDLPArgs(config{
+		outputDir: "downloads",
+		quality:   "best",
+		urls:      []string{"https://www.youtube.com/watch?v=abc123"},
+	}, false)
+
+	if !hasArg(args, "--js-runtimes") || !hasArg(args, "node:/usr/local/bin/node") {
+		t.Fatalf("expected JS runtime args: %#v", args)
 	}
 }
 
