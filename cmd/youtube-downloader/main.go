@@ -1224,9 +1224,29 @@ func findDownloadedVideos(dir string) ([]string, error) {
 		if isDubbedOutputName(name) || !isVideoFile(name) {
 			continue
 		}
+		if hasExistingDubbedOutput(entries, name) {
+			continue
+		}
 		videos = append(videos, filepath.Join(dir, name))
 	}
 	return videos, nil
+}
+
+func hasExistingDubbedOutput(entries []os.DirEntry, sourceName string) bool {
+	sourceBase := safeFilePart(videoBaseName(sourceName))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !isDubbedOutputName(name) {
+			continue
+		}
+		if strings.HasPrefix(safeFilePart(videoBaseName(name)), sourceBase) {
+			return true
+		}
+	}
+	return false
 }
 
 func isVideoFile(path string) bool {

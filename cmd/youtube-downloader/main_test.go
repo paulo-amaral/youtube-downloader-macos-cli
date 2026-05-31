@@ -254,6 +254,8 @@ func TestFindDownloadedVideosSkipsDubbedOutputs(t *testing.T) {
 	files := []string{
 		"video.mp4",
 		"clip.webm",
+		"already_done [abc123].mp4",
+		"already_doneabc123.pt-BR.dub.123.mp4",
 		"clip.pt-BR.dub.123.mp4",
 		"gemini-dub-pt-BR-123.mp4",
 		"notes.txt",
@@ -268,8 +270,8 @@ func TestFindDownloadedVideosSkipsDubbedOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(videos) != 2 {
-		t.Fatalf("expected 2 videos, got %d: %#v", len(videos), videos)
+	if len(videos) != 1 {
+		t.Fatalf("expected 1 video, got %d: %#v", len(videos), videos)
 	}
 }
 
