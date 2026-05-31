@@ -39,6 +39,7 @@ type config struct {
 	openDir       bool
 	dryRun        bool
 	dubAfter      bool
+	dubEngine     string
 	concurrent    int
 	subtitles     bool
 	autoSubtitles bool
@@ -183,6 +184,7 @@ func parseDownloadFlags(args []string) (config, error) {
 	fs.BoolVar(&cfg.openDir, "open", false, "open output folder in Finder after downloading")
 	fs.BoolVar(&cfg.dryRun, "dry-run", false, "print the yt-dlp command without running it")
 	fs.BoolVar(&cfg.dubAfter, "dub-after", false, "offer dubbing after download")
+	fs.StringVar(&cfg.dubEngine, "dub-engine", "", "dubbing engine after download: auto, gemini, local")
 	fs.IntVar(&cfg.concurrent, "concurrent", cfg.concurrent, "number of videos to download at the same time")
 	fs.IntVar(&cfg.concurrent, "j", cfg.concurrent, "number of videos to download at the same time")
 	fs.BoolVar(&cfg.subtitles, "subtitles", false, "download and embed Portuguese subtitles when available")
@@ -356,6 +358,7 @@ func normalizeConfig(cfg config) (config, error) {
 	cfg.outputDir = strings.TrimSpace(cfg.outputDir)
 	cfg.quality = strings.TrimSpace(cfg.quality)
 	cfg.audioFormat = strings.TrimSpace(cfg.audioFormat)
+	cfg.dubEngine = strings.ToLower(strings.TrimSpace(cfg.dubEngine))
 	cfg.subtitleLangs = strings.TrimSpace(cfg.subtitleLangs)
 
 	if cfg.outputDir == "" {
@@ -374,6 +377,9 @@ func normalizeConfig(cfg config) (config, error) {
 		return cfg, err
 	}
 	if err := validateConcurrentDownloads(cfg.concurrent); err != nil {
+		return cfg, err
+	}
+	if err := validateDubEngine(cfg.dubEngine); err != nil {
 		return cfg, err
 	}
 	if cfg.autoSubtitles {
@@ -405,8 +411,9 @@ func interactive() error {
 
 	switch choose(reader, "What do you want to do?", []string{
 		"Download videos",
-		"Dub one video",
+		"Download and dub",
 		"Dub downloaded videos",
+		"Dub one video",
 		"List formats for a video",
 		"Check dependencies",
 		"Update yt-dlp",
@@ -419,19 +426,28 @@ func interactive() error {
 		}
 		return download(cfg, false)
 	case 2:
-		return promptDubOne(reader)
+		cfg := defaultConfig()
+		cfg.dubAfter = true
+		cfg.dubEngine = "auto"
+		if err := promptDownload(reader, &cfg); err != nil {
+			return err
+		}
+		cfg.dubAfter = true
+		return download(cfg, false)
 	case 3:
 		return promptDubDownloaded(reader)
 	case 4:
+		return promptDubOne(reader)
+	case 5:
 		cfg := defaultConfig()
 		if err := promptURLs(reader, &cfg); err != nil {
 			return err
 		}
 		cfg.playlist = promptYesNo(reader, "Treat playlist URLs as playlists?", false)
 		return download(cfg, true)
-	case 5:
-		return check()
 	case 6:
+		return check()
+	case 7:
 		return streamCommand("yt-dlp", "-U")
 	default:
 		fmt.Println("Bye.")
@@ -475,7 +491,11 @@ func promptDownload(reader *bufio.Reader, cfg *config) error {
 	cfg.openDir = promptYesNo(reader, "Open folder in Finder when done?", cfg.openDir)
 	cfg.update = promptYesNo(reader, "Update yt-dlp before download?", false)
 	cfg.dryRun = promptYesNo(reader, "Preview command only?", false)
-	cfg.dubAfter = promptYesNo(reader, "Offer dubbing after download?", true)
+	if cfg.dubAfter {
+		cfg.dubEngine = "auto"
+	} else {
+		cfg.dubAfter = promptYesNo(reader, "Offer dubbing after download?", false)
+	}
 	return nil
 }
 
@@ -515,7 +535,7 @@ func promptDubDownloaded(reader *bufio.Reader) error {
 	return offerDubbingWithEngineChoice(reader, inputDir, outputDir, targetLang)
 }
 
-func offerDubbingForDownloadedVideos(reader *bufio.Reader, dir string) error {
+func offerDubbingForDownloadedVideos(reader *bufio.Reader, dir, engine string) error {
 	videos, err := findDownloadedVideos(dir)
 	if err != nil {
 		return err
@@ -531,14 +551,31 @@ func offerDubbingForDownloadedVideos(reader *bufio.Reader, dir string) error {
 	if reader == nil {
 		reader = bufio.NewReader(os.Stdin)
 	}
-	if !promptYesNo(reader, "Dub these videos now?", true) {
+	if engine == "" && !promptYesNo(reader, "Dub these videos now?", true) {
 		return nil
 	}
 	targetLang := promptText(reader, "Target language", "pt-BR")
-	return offerDubbingWithEngineChoice(reader, dir, dir, targetLang)
+	return offerDubbingWithEngine(reader, dir, dir, targetLang, engine)
 }
 
 func offerDubbingWithEngineChoice(reader *bufio.Reader, inputDir, outputDir, targetLang string) error {
+	return offerDubbingWithEngine(reader, inputDir, outputDir, targetLang, "")
+}
+
+func offerDubbingWithEngine(reader *bufio.Reader, inputDir, outputDir, targetLang, engine string) error {
+	engine = normalizeDubEngine(engine)
+	switch engine {
+	case "gemini":
+		return dubDownloadedWithGemini(geminiFolderDubConfig{inputDir: inputDir, outputDir: outputDir, targetLang: targetLang})
+	case "local":
+		return dubDownloadedWithLocalAI(geminiFolderDubConfig{inputDir: inputDir, outputDir: outputDir, targetLang: targetLang})
+	}
+
+	if preferred := preferredDubEngine(); preferred != "" {
+		printField("engine", preferred)
+		return offerDubbingWithEngine(reader, inputDir, outputDir, targetLang, preferred)
+	}
+
 	switch choose(reader, "Dubbing engine", []string{
 		"Gemini API",
 		"Local AI",
@@ -548,6 +585,24 @@ func offerDubbingWithEngineChoice(reader *bufio.Reader, inputDir, outputDir, tar
 	default:
 		return dubDownloadedWithLocalAI(geminiFolderDubConfig{inputDir: inputDir, outputDir: outputDir, targetLang: targetLang})
 	}
+}
+
+func preferredDubEngine() string {
+	if strings.TrimSpace(os.Getenv("GEMINI_API_KEY")) != "" {
+		return "gemini"
+	}
+	if localDubbingLooksConfigured() {
+		return "local"
+	}
+	return ""
+}
+
+func normalizeDubEngine(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" || value == "auto" {
+		return ""
+	}
+	return value
 }
 
 func promptURLs(reader *bufio.Reader, cfg *config) error {
@@ -663,7 +718,7 @@ func download(cfg config, listFormats bool) error {
 		return err
 	}
 	if cfg.dubAfter && !listFormats && cfg.quality != "audio" {
-		if err := offerDubbingForDownloadedVideos(nil, cfg.outputDir); err != nil {
+		if err := offerDubbingForDownloadedVideos(nil, cfg.outputDir, cfg.dubEngine); err != nil {
 			return err
 		}
 	}
@@ -948,6 +1003,22 @@ func requireLocalDubbingDeps(needsYTDLP bool) (localDubbingStack, error) {
 		return stack, fmt.Errorf("PIPER_VOICE must point to a .onnx voice model: %s", stack.piperVoice)
 	}
 	return stack, nil
+}
+
+func localDubbingLooksConfigured() bool {
+	if strings.TrimSpace(os.Getenv("PIPER_VOICE")) == "" {
+		return false
+	}
+	if _, err := commandFromEnvOrPath("WHISPER_BIN", "whisper", "whisper-cli"); err != nil {
+		return false
+	}
+	if _, err := commandFromEnvOrPath("OLLAMA_BIN", "ollama"); err != nil {
+		return false
+	}
+	if _, err := commandFromEnvOrPath("PIPER_BIN", "piper"); err != nil {
+		return false
+	}
+	return true
 }
 
 func commandFromEnvOrPath(envName string, names ...string) (string, error) {
@@ -1985,6 +2056,15 @@ func validateConcurrentDownloads(value int) error {
 	return nil
 }
 
+func validateDubEngine(value string) error {
+	switch value {
+	case "", "auto", "gemini", "local":
+		return nil
+	default:
+		return fmt.Errorf("unsupported dub engine %q; use auto, gemini, or local", value)
+	}
+}
+
 func validateLanguageCode(value string) error {
 	if value == "" {
 		return errors.New("target language cannot be empty")
@@ -2104,6 +2184,7 @@ func printHelp() {
 	fmt.Println("      --open                open folder in Finder")
 	fmt.Println("      --dry-run             preview yt-dlp command")
 	fmt.Println("      --dub-after           offer dubbing after download")
+	fmt.Println("      --dub-engine VALUE    auto, gemini, or local. Default: auto")
 	fmt.Println()
 	fmt.Println(bold("Media Options"))
 	fmt.Println("      --audio-format VALUE  mp3, m4a, opus, wav, etc. Default: mp3")

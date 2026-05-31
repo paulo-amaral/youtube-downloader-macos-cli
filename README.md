@@ -131,6 +131,12 @@ Download and then choose a dubbing engine:
 ./bin/youtube-downloader download --dub-after "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
 ```
 
+Prefer a specific dubbing engine after download:
+
+```bash
+./bin/youtube-downloader download --dub-after --dub-engine gemini "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
+```
+
 Download video with Portuguese subtitles embedded:
 
 ```bash
@@ -234,6 +240,7 @@ Print the current version:
 -i, --input DIR           folder with downloaded videos. Default: ~/Downloads/YouTube
 -j, --concurrent NUM      videos to download at the same time. Default: 1
     --dub-after           offer dubbing after download
+    --dub-engine VALUE    auto, gemini, or local. Default: auto
 -t, --to VALUE            target language for dub. Default: pt
     --open                open folder in Finder
     --dry-run             preview yt-dlp command

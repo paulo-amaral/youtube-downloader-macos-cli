@@ -146,6 +146,35 @@ func TestParseDownloadFlagsWithDubAfter(t *testing.T) {
 	}
 }
 
+func TestParseDownloadFlagsWithDubEngine(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := parseDownloadFlags([]string{
+		"--dub-after",
+		"--dub-engine", "gemini",
+		"https://www.youtube.com/watch?v=abc123",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.dubEngine != "gemini" {
+		t.Fatalf("expected gemini engine, got %q", cfg.dubEngine)
+	}
+}
+
+func TestValidateDubEngine(t *testing.T) {
+	t.Parallel()
+
+	for _, value := range []string{"", "auto", "gemini", "local"} {
+		if err := validateDubEngine(value); err != nil {
+			t.Fatalf("expected %q to be valid: %v", value, err)
+		}
+	}
+	if err := validateDubEngine("bad"); err == nil {
+		t.Fatal("expected unsupported engine to be rejected")
+	}
+}
+
 func TestValidateConcurrentDownloads(t *testing.T) {
 	t.Parallel()
 
