@@ -38,6 +38,7 @@ type config struct {
 	update        bool
 	openDir       bool
 	dryRun        bool
+	dubAfter      bool
 	concurrent    int
 	subtitles     bool
 	autoSubtitles bool
@@ -181,6 +182,7 @@ func parseDownloadFlags(args []string) (config, error) {
 	fs.BoolVar(&cfg.update, "u", false, "update yt-dlp before downloading")
 	fs.BoolVar(&cfg.openDir, "open", false, "open output folder in Finder after downloading")
 	fs.BoolVar(&cfg.dryRun, "dry-run", false, "print the yt-dlp command without running it")
+	fs.BoolVar(&cfg.dubAfter, "dub-after", false, "offer dubbing after download")
 	fs.IntVar(&cfg.concurrent, "concurrent", cfg.concurrent, "number of videos to download at the same time")
 	fs.IntVar(&cfg.concurrent, "j", cfg.concurrent, "number of videos to download at the same time")
 	fs.BoolVar(&cfg.subtitles, "subtitles", false, "download and embed Portuguese subtitles when available")
@@ -473,6 +475,7 @@ func promptDownload(reader *bufio.Reader, cfg *config) error {
 	cfg.openDir = promptYesNo(reader, "Open folder in Finder when done?", cfg.openDir)
 	cfg.update = promptYesNo(reader, "Update yt-dlp before download?", false)
 	cfg.dryRun = promptYesNo(reader, "Preview command only?", false)
+	cfg.dubAfter = promptYesNo(reader, "Offer dubbing after download?", true)
 	return nil
 }
 
@@ -509,6 +512,33 @@ func promptDubDownloaded(reader *bufio.Reader) error {
 	outputDir := expandHome(promptText(reader, "Output folder", inputDir))
 	targetLang := promptText(reader, "Target language", "pt-BR")
 
+	return offerDubbingWithEngineChoice(reader, inputDir, outputDir, targetLang)
+}
+
+func offerDubbingForDownloadedVideos(reader *bufio.Reader, dir string) error {
+	videos, err := findDownloadedVideos(dir)
+	if err != nil {
+		return err
+	}
+	if len(videos) == 0 {
+		printHint("No newly downloaded videos need dubbing.")
+		return nil
+	}
+	printSection("Downloaded videos ready for dubbing")
+	printField("folder", dir)
+	printField("videos", strconv.Itoa(len(videos)))
+
+	if reader == nil {
+		reader = bufio.NewReader(os.Stdin)
+	}
+	if !promptYesNo(reader, "Dub these videos now?", true) {
+		return nil
+	}
+	targetLang := promptText(reader, "Target language", "pt-BR")
+	return offerDubbingWithEngineChoice(reader, dir, dir, targetLang)
+}
+
+func offerDubbingWithEngineChoice(reader *bufio.Reader, inputDir, outputDir, targetLang string) error {
 	switch choose(reader, "Dubbing engine", []string{
 		"Gemini API",
 		"Local AI",
@@ -631,6 +661,11 @@ func download(cfg config, listFormats bool) error {
 		}
 	} else if err := streamCommand("yt-dlp", args...); err != nil {
 		return err
+	}
+	if cfg.dubAfter && !listFormats && cfg.quality != "audio" {
+		if err := offerDubbingForDownloadedVideos(nil, cfg.outputDir); err != nil {
+			return err
+		}
 	}
 	if cfg.openDir && runtime.GOOS == "darwin" && !listFormats {
 		return exec.Command("open", cfg.outputDir).Run()
@@ -2068,6 +2103,7 @@ func printHelp() {
 	fmt.Println("  -j, --concurrent NUM      videos to download at the same time. Default: 1")
 	fmt.Println("      --open                open folder in Finder")
 	fmt.Println("      --dry-run             preview yt-dlp command")
+	fmt.Println("      --dub-after           offer dubbing after download")
 	fmt.Println()
 	fmt.Println(bold("Media Options"))
 	fmt.Println("      --audio-format VALUE  mp3, m4a, opus, wav, etc. Default: mp3")

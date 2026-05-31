@@ -131,6 +131,21 @@ func TestParseDownloadFlagsWithConcurrentDownloads(t *testing.T) {
 	}
 }
 
+func TestParseDownloadFlagsWithDubAfter(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := parseDownloadFlags([]string{
+		"--dub-after",
+		"https://www.youtube.com/watch?v=abc123",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.dubAfter {
+		t.Fatal("expected dub-after to be enabled")
+	}
+}
+
 func TestValidateConcurrentDownloads(t *testing.T) {
 	t.Parallel()
 

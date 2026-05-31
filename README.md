@@ -125,6 +125,12 @@ Download up to 3 videos at the same time:
 ./bin/youtube-downloader download --concurrent 3 --file urls.txt
 ```
 
+Download and then choose a dubbing engine:
+
+```bash
+./bin/youtube-downloader download --dub-after "https://www.youtube.com/watch?v=5ZsPtbD4P9s"
+```
+
 Download video with Portuguese subtitles embedded:
 
 ```bash
@@ -227,6 +233,7 @@ Print the current version:
     --subtitle-langs VAL  yt-dlp subtitle languages. Default: pt.*,pt-BR,pt
 -i, --input DIR           folder with downloaded videos. Default: ~/Downloads/YouTube
 -j, --concurrent NUM      videos to download at the same time. Default: 1
+    --dub-after           offer dubbing after download
 -t, --to VALUE            target language for dub. Default: pt
     --open                open folder in Finder
     --dry-run             preview yt-dlp command
